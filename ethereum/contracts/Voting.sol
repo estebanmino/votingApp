@@ -44,6 +44,9 @@ contract Voting {
         candidates = new address[](0);
         queue = new Queue();
     }
+    
+    event TryingToVote1(address _candidate, address _sender);
+    event TryingToVote2(address _candidate, address _sender);
 
     modifier onlyOwner() {
         require(msg.sender == owner);
@@ -71,7 +74,6 @@ contract Voting {
     }
 
     // OWNER
-
     function addCandidate(address _newCandidate) public onlyOwner() beforeStarts() {
         votingPoll[_newCandidate] = CandidateResult(0, true);
         candidates.push(_newCandidate);
@@ -79,17 +81,24 @@ contract Voting {
 
     function startVotingPeriod(uint _votingPeriod) public onlyOwner() beforeStarts() {
         votingStart = now;
-        votingPeriod = _votingPeriod;
+        votingPeriod = _votingPeriod * 1 minutes;
     }
 
-    function askVoteRight() public beforeStarts() {
-        votersRegistry[msg.sender] = VoteRegistry(false, true);
+    function getFirstAskingPermission() public constant onlyOwner() beforeStarts() returns (address) {
+        return queue.getFirst();
+    }
+
+    function givePermissionToFirst() public onlyOwner() beforeStarts() {
+        votersRegistry[queue.getFirst()] = VoteRegistry(false, true);
+        queue.dequeue();
     }
 
     // VOTERS
     function vote(address _candidateAddress) public notVoteAlready() duringVotingTime() {
+        TryingToVote1(_candidateAddress, msg.sender);
         require(votingPoll[_candidateAddress].initialized);
-        votersRegistry[msg.sender].vote == true;
+        TryingToVote2(_candidateAddress, msg.sender);
+        votersRegistry[msg.sender].vote = true;
         votingPoll[_candidateAddress].count += 1; 
     } 
 
@@ -100,12 +109,24 @@ contract Voting {
         return candidates;
     }
 
-
     function getResult(address _candidate) public constant returns (uint) {
         if (votingPoll[_candidate].initialized) {
             return votingPoll[_candidate].count;
         } else {
             return 0;
+        }
+    }
+
+
+    function askVoteRight() public beforeStarts() {
+        queue.enqueue(msg.sender);
+    }
+
+    function voteRightGiven() public constant returns (bool) {
+        if (votersRegistry[msg.sender].initialized) {
+            return true;
+        } else {
+            return false;
         }
     }
 }
