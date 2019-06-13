@@ -5,3 +5,4 @@
 #abc
 #abc
 #feat1
+v1.0.4
